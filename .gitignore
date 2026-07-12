@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+*.docx
+*.zip
+*.pkl
+*.bin
+*.sql
+*.key
