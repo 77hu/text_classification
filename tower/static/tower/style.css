@@ -1,0 +1,320 @@
+/* ===== 页面整体 ===== */
+body {
+    font-family: 'Microsoft YaHei', sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+h1 {
+    color: #e74c3c;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 20px;
+}
+/* ===== 连接状态 ===== */
+.status {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 8px;
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-size: 14px;
+}
+.status.connected { color: #27ae60; }
+.status.disconnected { color: #e74c3c; }
+
+/* ===== 倒计时区域 ===== */
+.countdown {
+    text-align: center;
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.countdown-timer {
+    font-size: 24px;
+    font-weight: bold;
+    color: #e74c3c;
+}
+.countdown-text {
+    font-size: 14px;
+    color: #7f8c8d;
+    margin-bottom: 5px;
+}
+
+/* ===== 倒计时闪烁动画（最后10秒） ===== */
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+.countdown-timer.alert {
+    animation: blink 1s infinite;
+    color: #e74c3c;
+}
+
+/* 在线指示脉冲点 */
+.status.connected::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: #27ae60;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* 新攻击记录高亮动画 */
+@keyframes rowHighlight {
+    0% { background-color: #fff3cd; }
+    30% { background-color: #ffeaa7; }
+    100% { background-color: transparent; }
+}
+.tower-row.new-record {
+    animation: rowHighlight 3s ease;
+}
+.tower-row.new-record .tower-number {
+    background-color: #e74c3c;
+    color: white;
+}
+
+/* ===== 城池统计 ===== */
+.stats-container {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin: 15px 0;
+    padding: 12px;
+}
+.stats-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    text-align: center;
+}
+.stats-item {
+    display: inline-block;
+    padding: 4px 8px;
+    margin: 2px;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    text-align: center;
+    white-space: nowrap;
+}
+.stats-name {
+    font-weight: bold;
+    color: #2c3e50;
+    display: inline;
+    font-size: 13px;
+}
+.stats-percent {
+    color: #e74c3c;
+    font-weight: bold;
+    display: inline;
+    margin-left: 4px;
+    font-size: 13px;
+}
+.stats-count {
+    color: #7f8c8d;
+    display: inline;
+    font-size: 12px;
+    margin-left: 2px;
+}
+
+/* ===== 攻击记录列表 ===== */
+.tower-list {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+.tower-row {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.3s ease;
+}
+.tower-row:last-child { border-bottom: none; }
+.tower-row:hover { background-color: #f9f9f9; }
+
+.tower-number {
+    min-width: 24px;
+    height: 24px;
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.tower-icon {
+    width: 60px;
+    height: 45px;
+    margin-right: 12px;
+    border-radius: 5px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.tower-icon img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    object-position: center 35%;
+    margin-top: -10px;
+}
+
+.tower-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.tower-details {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.tower-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+.tower-rate {
+    color: #7f8c8d;
+    font-size: 13px;
+    white-space: nowrap;
+}
+.tower-rate span {
+    font-weight: bold;
+    color: #e74c3c;
+}
+
+/* 预测结果标记（✓/✗） */
+.tower-prediction {
+    font-size: 16px;
+    font-weight: bold;
+    white-space: nowrap;
+    padding: 0 4px;
+}
+.tower-prediction.correct {
+    color: #27ae60;
+}
+.tower-prediction.wrong {
+    color: #e74c3c;
+}
+.tower-time {
+    color: #95a5a6;
+    font-size: 12px;
+    text-align: left;
+    flex-shrink: 0;
+}
+
+.no-data {
+    text-align: center;
+    padding: 30px;
+    color: #7f8c8d;
+    font-size: 14px;
+}
+
+/* ===== 顶部攻击提示横幅 ===== */
+.attack-alert {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(231, 76, 60, 0.9);
+    color: white;
+    text-align: center;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    z-index: 1000;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+}
+.attack-alert.show {
+    transform: translateY(0);
+}
+
+/* ===== 预测结果区域 ===== */
+.prediction-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin: 15px 0;
+    padding: 15px;
+    color: white;
+}
+.prediction-title {
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 12px;
+}
+.prediction-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.prediction-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background-color: rgba(255,255,255,0.15);
+}
+.prediction-rank {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+.prediction-rank.first {
+    background-color: #f39c12;
+}
+.prediction-name {
+    font-size: 15px;
+    font-weight: bold;
+    flex: 1;
+}
+.prediction-score {
+    font-size: 13px;
+    opacity: 0.9;
+}
+.prediction-collecting {
+    text-align: center;
+    padding: 20px;
+    font-size: 14px;
+    opacity: 0.8;
+    animation: collectingPulse 2s infinite;
+}
+@keyframes collectingPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}

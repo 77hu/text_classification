@@ -1,0 +1,265 @@
+﻿<!-- 主页面模板：展示倒计时、城池统计、攻击记录列表 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三国游戏数据实时展示</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'tower/style.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>三国游戏数据实时展示</h1>
+
+        <!-- 连接状态 -->
+        <div class="status {% if status == 'connected' %}connected{% else %}disconnected{% endif %}" id="connection-status">
+            {% if status == 'connected' %}已连接到服务器，实时接收数据中...{% else %}正在连接服务器...{% endif %}
+        </div>
+
+        <!-- 倒计时区域 -->
+        <div class="countdown" id="countdown">
+            <div class="countdown-text">距离下一次攻击还有</div>
+            <div id="countdown-timer" class="countdown-timer">{{ countdown }}</div>
+        </div>
+
+        <!-- 城池占比统计 -->
+        <div class="stats-container">
+            <div class="stats-title">最近100次进攻城池占比</div>
+            <div id="stats-grid" class="stats-grid">
+                {% for s in stats %}
+                <div class="stats-item">
+                    <span class="stats-name">{{ s.name }}</span>
+                    <span class="stats-percent">{{ s.percent }}%</span>
+                    <span class="stats-count">({{ s.count }})</span>
+                </div>
+                {% empty %}
+                <div class="no-data">暂无统计数据</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 下一轮预测 -->
+        <div class="prediction-container" id="prediction-container">
+            <div class="prediction-title">下一轮预测 Top 3</div>
+            <div id="prediction-content">
+                {% if prediction %}
+                <div class="prediction-list">
+                    {% for p in prediction %}
+                    <div class="prediction-item">
+                        <div class="prediction-rank {% if forloop.first %}first{% endif %}">{{ forloop.counter }}</div>
+                        <div class="prediction-name">{{ p.name }}</div>
+                        <div class="prediction-score">得分 {{ p.score }} | 概率 {{ p.probability }}%</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="prediction-collecting">数据收集中，请稍后...</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 攻击记录列表（最近10条） -->
+        <div class="tower-list" id="tower-container">
+            {% if records %}
+                {% for r in records %}
+                <div class="tower-row">
+                    <div class="tower-number">{{ forloop.counter }}</div>
+                    <div class="tower-icon">
+                        <img src="{{ r.tower_icon }}" alt="{{ r.tower_name }}" onerror="this.src='https://via.placeholder.com/60x45?text={{ r.tower_name }}'">
+                    </div>
+                    <div class="tower-info">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <div class="tower-name">敌军进攻：{{ r.tower_name }}</div>
+                            {% if r.tower_rate %}
+                            <div class="tower-rate">倍率：<span>{{ r.tower_rate }}</span></div>
+                            {% endif %}
+                            {% if r.predicted_cities %}
+                            <div class="tower-prediction {% if r.prediction_correct %}correct{% else %}wrong{% endif %}">
+                                {% if r.prediction_correct %}✓{% else %}✗{% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="tower-time">{{ r.time }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">正在加载数据...</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 顶部攻击提示横幅 -->
+    <div id="attack-alert" class="attack-alert">敌军正在进攻！</div>
+
+    <script>
+        // === 全局状态 ===
+        var lastFirstTime = '{{ records.0.time }}';  // 记录最新一条的时间，用于检测新攻击
+        var countdownValue = 0;                       // 倒计时秒数（由后端同步 + 客户端每秒递减）
+        var isRefetching = false;                     // 防止 API 请求重叠
+
+        // === 倒计时显示更新 ===
+        function updateCountdownDisplay() {
+            var el = document.getElementById('countdown-timer');
+            if (countdownValue <= 0) {
+                el.textContent = '即将开始';
+                el.classList.remove('alert');
+                return;
+            }
+            var m = Math.floor(countdownValue / 60);
+            var s = countdownValue % 60;
+            el.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            // 最后10秒红色闪烁
+            if (countdownValue <= 10) {
+                el.classList.add('alert');
+            } else {
+                el.classList.remove('alert');
+            }
+        }
+
+        // === 攻击记录列表渲染 ===
+        function renderRecords(records, isNew) {
+            var container = document.getElementById('tower-container');
+            if (!records || records.length === 0) {
+                container.innerHTML = '<div class="no-data">暂无数据</div>';
+                return;
+            }
+            container.innerHTML = records.map(function(r, i) {
+                // 新攻击的第一行添加 new-record 高亮动画
+                var rowClass = (isNew && i === 0) ? 'tower-row new-record' : 'tower-row';
+                return '<div class="' + rowClass + '">' +
+                    '<div class="tower-number">' + (i + 1) + '</div>' +
+                    '<div class="tower-icon"><img src="' + r.tower_icon + '" alt="' + r.tower_name + '" onerror="this.src=\'https://via.placeholder.com/60x45?text=' + r.tower_name + '\'"></div>' +
+                    '<div class="tower-info">' +
+                    '<div style="display: flex; gap: 10px; align-items: center;">' +
+                    '<div class="tower-name">敌军进攻：' + r.tower_name + '</div>' +
+                    (r.tower_rate ? '<div class="tower-rate">倍率：<span>' + r.tower_rate + '</span></div>' : '') +
+                    (r.predicted_cities ? '<div class="tower-prediction ' + (r.prediction_correct ? 'correct' : 'wrong') + '">' + (r.prediction_correct ? '✓' : '✗') + '</div>' : '') +
+                    '</div>' +
+                    '<div class="tower-time">' + r.time + '</div>' +
+                    '</div></div>';
+            }).join('');
+        }
+
+        // === 城池占比渲染 ===
+        function renderStats(stats) {
+            var grid = document.getElementById('stats-grid');
+            if (!stats || stats.length === 0) {
+                grid.innerHTML = '<div class="no-data">暂无统计数据</div>';
+                return;
+            }
+            grid.innerHTML = stats.map(function(s) {
+                return '<div class="stats-item">' +
+                    '<span class="stats-name">' + s.name + '</span>' +
+                    '<span class="stats-percent">' + s.percent + '%</span>' +
+                    '<span class="stats-count">(' + s.count + ')</span>' +
+                    '</div>';
+            }).join('');
+        }
+
+        // === 预测结果渲染 ===
+        function renderPrediction(prediction) {
+            var el = document.getElementById('prediction-content');
+            if (!prediction || prediction.length === 0) {
+                el.innerHTML = '<div class="prediction-collecting">数据收集中，请稍后...</div>';
+                return;
+            }
+            el.innerHTML = '<div class="prediction-list">' +
+                prediction.map(function(p, i) {
+                    var rankClass = (i === 0) ? 'prediction-rank first' : 'prediction-rank';
+                    return '<div class="prediction-item">' +
+                        '<div class="' + rankClass + '">' + (i + 1) + '</div>' +
+                        '<div class="prediction-name">' + p.name + '</div>' +
+                        '<div class="prediction-score">得分 ' + p.score + ' | 概率 ' + p.probability + '%</div>' +
+                        '</div>';
+                }).join('') +
+                '</div>';
+        }
+
+        // === 顶部攻击横幅提示 ===
+        function showAttackAlert(towerName) {
+            var el = document.getElementById('attack-alert');
+            el.textContent = towerName ? '敌军正在进攻' + towerName + '！' : '敌军正在进攻！';
+            el.classList.add('show');
+            setTimeout(function() {
+                el.classList.remove('show');
+            }, 5000);
+        }
+
+        // === 将后端返回的倒计时字符串解析为秒数 ===
+        function parseCountdown(str) {
+            if (!str || str === '即将开始' || str === '--:--') return 0;
+            var parts = str.split(':');
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+
+        // === AJAX 数据拉取 ===
+        function fetchData(isQuickRefresh) {
+            if (isRefetching) return;  // 防止并发请求
+            isRefetching = true;
+
+            fetch('/api/data/')
+                .then(function(resp) { return resp.json(); })
+                .then(function(data) {
+                    // 更新连接状态显示
+                    var statusEl = document.getElementById('connection-status');
+                    if (data.status === 'connected') {
+                        statusEl.className = 'status connected';
+                        statusEl.textContent = '已连接到服务器，实时接收数据中...';
+                    } else {
+                        statusEl.className = 'status disconnected';
+                        statusEl.textContent = '正在连接服务器...';
+                    }
+
+                    // 检测是否有新攻击记录
+                    var isNew = false;
+                    if (data.records && data.records.length > 0) {
+                        var newTime = data.records[0].time;
+                        if (newTime !== lastFirstTime && lastFirstTime !== '') {
+                            isNew = true;
+                            showAttackAlert(data.records[0].tower_name);
+                        }
+                        lastFirstTime = newTime;
+                    }
+
+                    renderRecords(data.records, isNew);
+                    renderStats(data.stats);
+                    renderPrediction(data.prediction);
+
+                    // 从后端同步倒计时值，前端随后每秒自行递减
+                    var newCd = parseCountdown(data.countdown);
+                    if (newCd > 0) {
+                        countdownValue = newCd;
+                        updateCountdownDisplay();
+                    }
+
+                    // 后端 refetch=true 表示倒计时 <= 5 秒，1秒后主动再次刷新以捕获新攻击
+                    if (data.refetch && !isQuickRefresh) {
+                        setTimeout(function() { fetchData(true); }, 1000);
+                    }
+                    isRefetching = false;
+                })
+                .catch(function() {
+                    var statusEl = document.getElementById('connection-status');
+                    statusEl.className = 'status disconnected';
+                    statusEl.textContent = '与服务器断开连接...';
+                    isRefetching = false;
+                });
+        }
+
+        // === 客户端每秒倒计时（与后端同步后自行递减，用户可看到连续跳动） ===
+        setInterval(function() {
+            if (countdownValue > 0) {
+                countdownValue--;
+                updateCountdownDisplay();
+            }
+        }, 1000);
+
+        // 初始渲染 + 首次数据拉取 + 定时轮询（2秒一次）
+        updateCountdownDisplay();
+        fetchData();
+        setInterval(fetchData, 2000);
+    </script>
+</body>
+</html>

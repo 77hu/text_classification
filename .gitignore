@@ -1,11 +1,8 @@
-# Python
 __pycache__/
 *.py[cod]
 .venv/
 .env
-*.docx
-*.zip
-*.pkl
-*.bin
-*.sql
 *.key
+*.sqlite3
+db.sqlite3
+*.log
